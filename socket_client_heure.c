@@ -49,11 +49,29 @@ int main(int argc, char **argv) {
 
 
     /* repete dans le socket tout ce qu'il entend */
-
+    /*
     while (c!=EOF) {
         c = getchar();
         write(sockfd, &c, 1);
     }
+     */
+    char buffer[4];
+    ssize_t bytesreceived = read(sockfd, buffer, 4);
+
+    if(bytesreceived == -1){
+        perror("Read failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+    else if ( bytesreceived == 0 ){
+        printf("Connection closed by the server");
+    }
+
+    unsigned long time_long = (unsigned long) ntohl(*((uint32_t *)buffer));
+
+    time_t time = (time_t) (time_long - 2208988800UL);
+
+    printf("NIST time received %s", ctime(&time));
 
     close(sockfd);
 

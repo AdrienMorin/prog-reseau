@@ -11,6 +11,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <time.h>
+#define MAX_BUFFER_SIZE 4096
+
 
 int main(int argc, char **argv) {
     int sockfd, newsockfd, clilen, chilpid, ok, nleft, nbwriten;
@@ -47,13 +49,26 @@ int main(int argc, char **argv) {
     }
 
 
-
-    /* repete dans le socket tout ce qu'il entend */
-
-    while (c!=EOF) {
-        c = getchar();
-        write(sockfd, &c, 1);
+    // Send HTTP GET request
+    const char *request = "GET / HTTP/1.1\r\nHost: perdu.com\r\nConnection: close\r\n\r\n";
+    if (send(sockfd, request, strlen(request), 0) == -1) {
+        perror("Send failed");
+        exit(EXIT_FAILURE);
     }
+
+    // Receive and print HTTP response
+    char buffer[MAX_BUFFER_SIZE];
+    ssize_t bytes_received;
+    while ((bytes_received = recv(sockfd, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[bytes_received] = '\0';
+        printf("%s", buffer);
+    }
+
+    if (bytes_received == -1) {
+        perror("Receive failed");
+        exit(EXIT_FAILURE);
+    }
+
 
     close(sockfd);
 
@@ -64,3 +79,4 @@ int main(int argc, char **argv) {
     return 1;
 
 }
+

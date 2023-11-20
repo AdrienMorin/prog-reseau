@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
-    char datas[] = "hello\n";
+    char data[128];
     int sockfd, newsockfd, clilen, chilpid, ok, nleft, nbwriten;
     char c;
     struct sockaddr_in cli_addr, serv_addr;
@@ -50,18 +50,41 @@ int main(int argc, char **argv) {
 
     /* attend la connection d'un client */
     clilen = sizeof(cli_addr);
-    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-    if (newsockfd < 0) {
-        printf("accept error\n");
-        exit(0);
-    }
-    printf("connection accepted\n");
 
+    while(1){
+        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if (newsockfd < 0) {
+            printf("accept error\n");
+            exit(0);
+        }
+        // Obtenir l'adresse IP du client
+        char clientIP[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(cli_addr.sin_addr), clientIP, INET_ADDRSTRLEN);
 
-    while (1) {
-        while (read(newsockfd, &c, 1) != 1);
-        printf("%c", c);
+        printf("Connection accepted from %s:%d\n", clientIP, ntohs(cli_addr.sin_port));
+
+        int pid = fork();
+        if (pid == 0) { // C'est le fils
+            close(sockfd); // socket inutile pour le fils
+            // Traiter la communication
+            while (data[0] != EOF) {
+                // On vide le buffer
+                memset(data, 0, sizeof(data));
+                // On lit sur le socket
+                read(newsockfd, data, 128);
+                if (data[0] == EOF) {
+                    printf("Client disconnected : %s:%d\r\n", clientIP, ntohs(cli_addr.sin_port));
+                } else
+                printf("Message from %s:%d : %s\r\n", clientIP, ntohs(cli_addr.sin_port), data);
+            }
+            close(newsockfd);
+            exit(0);
+        } else { // C'est le père
+            close(newsockfd);
+        }
     }
+
+    close(sockfd);
 
     /*  attention il s'agit d'une boucle infinie
      *  le socket nn'est jamais ferme !
